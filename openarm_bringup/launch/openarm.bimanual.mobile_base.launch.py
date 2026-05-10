@@ -114,7 +114,7 @@ def _add_offset_cylinder_link(root, name, radius, length, xyz, color, mass):
 def _add_support_column(root, base_mount_z):
     mount_z = float(base_mount_z)
     base_height = 0.16
-    top_plate_height = 0.06
+    top_plate_height = 0.05
     lower_column_length = max(mount_z - base_height / 2.0 - top_plate_height / 2.0, 0.05)
     lower_column_center_z = base_height / 2.0 + lower_column_length / 2.0
     upper_column_length = 0.24
@@ -123,10 +123,10 @@ def _add_support_column(root, base_mount_z):
     _add_cylinder_link(
         root,
         "mobile_base_lower_support_column_link",
-        0.11,
+        0.085,
         lower_column_length,
         "0.22 0.24 0.26 1.0",
-        3.0,
+        2.2,
     )
     _add_fixed_joint(
         root,
@@ -139,19 +139,19 @@ def _add_support_column(root, base_mount_z):
     _add_offset_cylinder_link(
         root,
         "mobile_base_upper_support_column_link",
-        0.075,
+        0.055,
         upper_column_length,
         f"0 0 {upper_column_center_z}",
         "0.38 0.40 0.42 1.0",
-        2.0,
+        1.4,
     )
 
     _add_box_link(
         root,
         "mobile_base_mount_link",
-        "0.38 0.28 0.06",
+        "0.30 0.22 0.05",
         "0.32 0.34 0.36 1.0",
-        4.0,
+        2.6,
     )
     _add_fixed_joint(
         root,
