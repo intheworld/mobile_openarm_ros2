@@ -47,6 +47,9 @@ controller_manager:
     mobile_base_controller:
       type: omni_wheel_drive_controller/OmniWheelDriveController
 
+    mobile_base_lift_controller:
+      type: forward_command_controller/ForwardCommandController
+
 
 left_forward_position_controller:
   ros__parameters:
@@ -196,3 +199,13 @@ mobile_base_controller:
     diagonal_covariance:
       pose: [0.001, 0.001, 0.0, 0.0, 0.0, 0.01]
       twist: [0.001, 0.001, 0.0, 0.0, 0.0, 0.01]
+
+mobile_base_lift_controller:
+  ros__parameters:
+    joints:
+      - mobile_base_lift_joint
+    interface_name: position
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position

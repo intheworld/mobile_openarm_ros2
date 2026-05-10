@@ -48,6 +48,20 @@ ros2 topic pub --rate 10 /mobile_base_controller/cmd_vel geometry_msgs/msg/Twist
 '{header: {frame_id: "mobile_base_link"}, twist: {linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.5}}}'
 ```
 
+Raise the bimanual base mount by 0.10 m from the initial `base_mount_z` height:
+
+```bash
+ros2 topic pub --once /mobile_base_lift_controller/commands std_msgs/msg/Float64MultiArray \
+'{data: [0.10]}'
+```
+
+Return the bimanual base mount to the initial `base_mount_z` height:
+
+```bash
+ros2 topic pub --once /mobile_base_lift_controller/commands std_msgs/msg/Float64MultiArray \
+'{data: [0.0]}'
+```
+
 ## Key Parameters
 
 - `arm_type` - Arm type (default: v10)

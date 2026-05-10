@@ -88,6 +88,111 @@ def _add_cylinder_link(root, name, radius, length, color, mass):
     return link
 
 
+def _add_offset_cylinder_link(root, name, radius, length, xyz, color, mass):
+    link = ET.SubElement(root, "link", name=name)
+    visual = ET.SubElement(link, "visual")
+    ET.SubElement(visual, "origin", xyz=xyz, rpy="0 0 0")
+    geometry = ET.SubElement(visual, "geometry")
+    ET.SubElement(geometry, "cylinder", radius=str(radius), length=str(length))
+    material = ET.SubElement(visual, "material", name=f"{name}_material")
+    ET.SubElement(material, "color", rgba=color)
+
+    collision = ET.SubElement(link, "collision")
+    ET.SubElement(collision, "origin", xyz=xyz, rpy="0 0 0")
+    collision_geometry = ET.SubElement(collision, "geometry")
+    ET.SubElement(collision_geometry, "cylinder", radius=str(radius), length=str(length))
+    _add_inertial(
+        link,
+        mass,
+        mass * radius * radius / 4.0,
+        mass * radius * radius / 4.0,
+        mass * radius * radius / 2.0,
+    )
+    return link
+
+
+def _add_support_column(root, base_mount_z):
+    mount_z = float(base_mount_z)
+    base_height = 0.16
+    top_plate_height = 0.06
+    lower_column_length = max(mount_z - base_height / 2.0 - top_plate_height / 2.0, 0.05)
+    lower_column_center_z = base_height / 2.0 + lower_column_length / 2.0
+    upper_column_length = 0.24
+    upper_column_center_z = -(top_plate_height / 2.0 + upper_column_length / 2.0)
+
+    _add_cylinder_link(
+        root,
+        "mobile_base_lower_support_column_link",
+        0.11,
+        lower_column_length,
+        "0.22 0.24 0.26 1.0",
+        3.0,
+    )
+    _add_fixed_joint(
+        root,
+        "mobile_base_lower_support_column_joint",
+        "mobile_base_link",
+        "mobile_base_lower_support_column_link",
+        f"0 0 {lower_column_center_z}",
+    )
+
+    _add_offset_cylinder_link(
+        root,
+        "mobile_base_upper_support_column_link",
+        0.075,
+        upper_column_length,
+        f"0 0 {upper_column_center_z}",
+        "0.38 0.40 0.42 1.0",
+        2.0,
+    )
+
+    _add_box_link(
+        root,
+        "mobile_base_mount_link",
+        "0.38 0.28 0.06",
+        "0.32 0.34 0.36 1.0",
+        4.0,
+    )
+    _add_fixed_joint(
+        root,
+        "mobile_base_upper_support_column_joint",
+        "mobile_base_mount_link",
+        "mobile_base_upper_support_column_link",
+        "0 0 0",
+    )
+    _add_prismatic_joint(
+        root,
+        "mobile_base_lift_joint",
+        "mobile_base_link",
+        "mobile_base_mount_link",
+        f"0 0 {mount_z}",
+        "0 0 1",
+        "0.0",
+        "0.30",
+        "1000.0",
+        "0.05",
+    )
+
+
+def _add_prismatic_joint(
+    root, name, parent, child, xyz, axis, lower, upper, effort, velocity
+):
+    joint = ET.SubElement(root, "joint", name=name, type="prismatic")
+    ET.SubElement(joint, "parent", link=parent)
+    ET.SubElement(joint, "child", link=child)
+    ET.SubElement(joint, "origin", xyz=xyz, rpy="0 0 0")
+    ET.SubElement(joint, "axis", xyz=axis)
+    ET.SubElement(
+        joint,
+        "limit",
+        lower=lower,
+        upper=upper,
+        effort=effort,
+        velocity=velocity,
+    )
+    return joint
+
+
 def _add_fixed_joint(root, name, parent, child, xyz, rpy="0 0 0"):
     joint = ET.SubElement(root, "joint", name=name, type="fixed")
     ET.SubElement(joint, "parent", link=parent)
@@ -113,6 +218,13 @@ def _add_mobile_base_ros2_control(root, wheel_joint_names):
     ET.SubElement(hardware, "plugin").text = "mock_components/GenericSystem"
     ET.SubElement(hardware, "param", name="fake_sensor_commands").text = "true"
     ET.SubElement(hardware, "param", name="state_following_offset").text = "0.0"
+
+    lift_joint = ET.SubElement(ros2_control, "joint", name="mobile_base_lift_joint")
+    ET.SubElement(lift_joint, "command_interface", name="position")
+    lift_position = ET.SubElement(lift_joint, "state_interface", name="position")
+    ET.SubElement(lift_position, "param", name="initial_value").text = "0.0"
+    lift_velocity = ET.SubElement(lift_joint, "state_interface", name="velocity")
+    ET.SubElement(lift_velocity, "param", name="initial_value").text = "0.0"
 
     for joint_name in wheel_joint_names:
         joint = ET.SubElement(ros2_control, "joint", name=joint_name)
@@ -143,21 +255,7 @@ def add_omni_base(robot_description, base_mount_z):
     _add_box_link(
         root, "mobile_base_link", "0.72 0.52 0.16", "0.12 0.14 0.16 1.0", 18.0
     )
-    _add_box_link(
-        root,
-        "mobile_base_mount_link",
-        "0.34 0.24 0.08",
-        "0.32 0.34 0.36 1.0",
-        4.0,
-    )
-
-    _add_fixed_joint(
-        root,
-        "mobile_base_mount_joint",
-        "mobile_base_link",
-        "mobile_base_mount_link",
-        f"0 0 {base_mount_z}",
-    )
+    _add_support_column(root, base_mount_z)
 
     wheel_positions = {
         "front_left": "0.26 0.22 -0.04",
@@ -513,6 +611,7 @@ def generate_launch_description():
                 namespace=namespace_from_context(context, arm_prefix),
                 arguments=[
                     "mobile_base_controller",
+                    "mobile_base_lift_controller",
                     "-c",
                     controller_manager_ref(context, arm_prefix),
                 ],
